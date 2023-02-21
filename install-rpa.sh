@@ -438,4 +438,4 @@ WORKAROUND_serviceAccounts
 waitRpaReady
 
 echo "RPA installation completed"
-echo "Install LDAP local if needed using ./install-ldap.sh command"
+echo "Use ./showAccessInfo.sh tho show access infos"

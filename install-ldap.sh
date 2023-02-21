@@ -318,4 +318,4 @@ createDeployment
 
 waitForDeploymentReady ${TNS} icp4adeploy-openldap-deploy ${WAIT_SECS}
 
-echo "LDAP installed, wait for pod readiness then use ./showAccessInfo.sh tho show access infos"
+echo "LDAP installed."
