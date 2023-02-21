@@ -5,6 +5,15 @@
 source ./rpa.properties
 
 #-------------------------------
+namespaceExist () {
+    if [ $(oc get ns $1 | grep $1 | wc -l) -lt 1 ];
+    then
+        return 0
+    fi
+    return 1
+}
+
+#-------------------------------
 createEntitlementSecrets() {
 
 oc create secret docker-registry -n ${TNS} pull-secret \
@@ -41,6 +50,14 @@ if [ -z "${ENTITLEMENT_KEY}" ]; then
     exit
 fi
 
+}
+
+#-------------------------------
+createNamespace() {
+   namespaceExist ${TNS}
+   if [ $? -eq 0 ]; then
+      oc new-project ${TNS}
+   fi
 }
 
 #-------------------------------
@@ -288,6 +305,8 @@ waitForDeploymentReady () {
 #===============================
 
 checkParams
+
+createNamespace
 
 createEntitlementSecrets
 

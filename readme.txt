@@ -11,8 +11,8 @@ Installazione:
 
 - impostare variabile di ambiente CP4BA_AUTO_ENTITLEMENT_KEY nella shell di avvio scripts (export CP4BA_AUTO_ENTITLEMENT_KEY="...vostra key...")
 - modificare file rpa.properties con vostre necessità/preferenze
-- avviare comando ./install-rpa.sh e attendere completamento
 - avviare comando ./install-ldap.sh e attendere completamento
+- avviare comando ./install-rpa.sh e attendere completamento
 
 Configurazione:
 
