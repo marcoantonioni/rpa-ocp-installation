@@ -1,4 +1,4 @@
-Install RPA environment in OpenShift cluster
+Install IBM Robotic Process Automation server environment in OpenShift cluster
 
 Prerequisites:
 
