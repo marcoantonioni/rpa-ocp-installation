@@ -2,7 +2,33 @@
 
 #-------------------------------
 # read installation parameters
-source ./rpa.properties
+PROPS_FILE="./rpa.properties"
+
+CHECK_PARAMS=false
+while getopts p:c flag
+do
+    case "${flag}" in
+        c) CHECK_PARAMS=true;;
+        p) PROPS_FILE=${OPTARG};;
+    esac
+done
+
+if [[ -z ${PROPS_FILE}"" ]];
+then
+    # load default props file
+    PROPS_FILE="./rpa.properties"
+    echo "Sourcing default properties file "
+    source ${PROPS_FILE}
+else
+    if [[ -f ${PROPS_FILE} ]];
+    then
+        echo "Sourcing properties file "${PROPS_FILE}
+        source ${PROPS_FILE}
+    else
+        echo "ERROR: Properties file "${PROPS_FILE}" not found !!!"
+        exit
+    fi
+fi
 
 #-------------------------------
 namespaceExist () {
@@ -16,14 +42,14 @@ namespaceExist () {
 #-------------------------------
 createEntitlementSecrets() {
 
-oc create secret docker-registry -n ${TNS} pull-secret \
+oc create secret docker-registry -n ${RPA_NS} pull-secret \
     --docker-server=cp.icr.io \
     --docker-username=cp \
     --docker-password="${ENTITLEMENT_KEY}"
 
-oc secrets link -n ${TNS} default pull-secret --for=pull
+oc secrets link -n ${RPA_NS} default pull-secret --for=pull
 
-oc create secret docker-registry -n ${TNS} ibm-entitlement-key \
+oc create secret docker-registry -n ${RPA_NS} ibm-entitlement-key \
     --docker-server=cp.icr.io \
     --docker-username=cp \
     --docker-password="${ENTITLEMENT_KEY}"
@@ -33,15 +59,15 @@ oc create secret docker-registry -n ${TNS} ibm-entitlement-key \
 #-------------------------------
 checkParams() {
 
-if [ -f "./ldap_user.ldif" ]; then
+if [ -f "${RPA_LDAP_LDIF_NAME}" ]; then
   echo "LDIF file is here"
 else
-  echo "ERROR: file './ldap_user.ldif' must be here"
+  echo "ERROR: file '${RPA_LDAP_LDIF_NAME}' must be here"
   exit
 fi
 
-if [ -z "${TNS}" ]; then
-    echo "ERROR: TNS, namespace not set"
+if [ -z "${RPA_NS}" ]; then
+    echo "ERROR: RPA_NS, namespace not set"
     exit
 fi
 
@@ -54,23 +80,23 @@ fi
 
 #-------------------------------
 createNamespace() {
-   namespaceExist ${TNS}
+   namespaceExist ${RPA_NS}
    if [ $? -eq 0 ]; then
-      oc new-project ${TNS}
+      oc new-project ${RPA_NS}
    fi
 }
 
 #-------------------------------
 createSecrets() {
-  oc create secret generic -n ${TNS} icp4adeploy-openldap-secret --from-literal=LDAP_ADMIN_PASSWORD=passw0rd --from-literal=LDAP_CONFIG_PASSWORD=passw0rd
-  oc create secret generic -n ${TNS} icp4adeploy-openldap-customldif --from-file=ldap_user.ldif=./ldap_user.ldif
+  oc create secret generic -n ${RPA_NS} icp4adeploy-openldap-secret --from-literal=LDAP_ADMIN_PASSWORD=passw0rd --from-literal=LDAP_CONFIG_PASSWORD=passw0rd
+  oc create secret generic -n ${RPA_NS} icp4adeploy-openldap-customldif --from-file=ldap_user.ldif=${RPA_LDAP_LDIF_NAME}
 
 }
 
 #-------------------------------
 createServiceAccountAndCfgMap() {
 
-cat << EOF | oc create -n ${TNS} -f -
+cat << EOF | oc create -n ${RPA_NS} -f -
 apiVersion: v1
 kind: ServiceAccount
 metadata:
@@ -79,9 +105,9 @@ imagePullSecrets:
 - name: 'ibm-entitlement-key'
 EOF
 
-oc adm policy add-scc-to-user anyuid -z ibm-cp4ba-anyuid -n ${TNS}
+oc adm policy add-scc-to-user anyuid -z ibm-cp4ba-anyuid -n ${RPA_NS}
 
-cat << EOF | oc create -n ${TNS} -f -
+cat << EOF | oc create -n ${RPA_NS} -f -
 kind: ConfigMap
 apiVersion: v1
 metadata:
@@ -99,7 +125,7 @@ EOF
 
 #-------------------------------
 createDeployment() {
-cat << EOF | oc create -n ${TNS} -f -
+cat << EOF | oc create -n ${RPA_NS} -f -
 kind: Deployment
 apiVersion: apps/v1
 metadata:
@@ -278,7 +304,7 @@ spec:
           emptyDir: {}
 EOF
 
-oc expose deployment -n ${TNS} icp4adeploy-openldap-deploy
+oc expose deployment -n ${RPA_NS} icp4adeploy-openldap-deploy
 
 }
 
@@ -304,6 +330,25 @@ waitForDeploymentReady () {
 
 #===============================
 
+echo "Installing LDAP in namespace "${RPA_NS}
+
+if [ "${CHECK_PARAMS}" = "true" ]; then
+
+  echo ""
+  echo "=== RPA installation variables ==="
+  declare -p | grep RPA_ | awk '{print $3}'
+  echo "=================================="
+  # wait confirmation
+  read -n 1 -p "Do you want to continue with the installation? y/n:" install
+  echo ""
+  if [[ "${install}" = "y" || "${install}" = "Y" ]]; then
+    echo "begin installation..."
+  else
+    echo "Installation halted."
+  fi
+
+fi
+
 checkParams
 
 createNamespace
@@ -316,6 +361,6 @@ createServiceAccountAndCfgMap
 
 createDeployment
 
-waitForDeploymentReady ${TNS} icp4adeploy-openldap-deploy ${WAIT_SECS}
+waitForDeploymentReady ${RPA_NS} icp4adeploy-openldap-deploy ${RPA_WAIT_SECS}
 
 echo "LDAP installed."
