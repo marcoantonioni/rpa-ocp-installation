@@ -353,6 +353,8 @@ EOF
 
     done
 
+    # to be revisited
+    sleep 30
 }
 
 #-------------------------------
